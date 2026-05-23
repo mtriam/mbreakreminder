@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 IDLE_RESET_TIME=300
 WORK_TIME=900
 FLASHES=15
@@ -18,7 +18,8 @@ is_fullscreen() {
 }
 
 
-swayidle -w timeout $IDLE_RESET_TIME "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" &
+#swayidle -w timeout $IDLE_RESET_TIME "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" &
+swayidle -w timeout $IDLE_RESET_TIME "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" resume "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" &
 
 while true; do
   now=$(date +%s)
