@@ -23,8 +23,18 @@ Fullscreen windows are ignored automatically, making it suitable for gaming, vid
 
 - Bash
 - `swayidle`
-- `mmsg`
 - MangoWM
+
+---
+
+## Versions
+
+This repository includes two script versions:
+
+- `break_reminder.sh` – current `mmsg` syntax using `mmsg get all-clients` and `mmsg dispatch ...`
+- `break_reminder_old_mmsg.sh` – legacy `mmsg` syntax using `mmsg -g -m` and `mmsg -d ...`
+
+Use the one that matches your MangoWM / `mmsg` installation.
 
 ---
 
@@ -66,7 +76,12 @@ Default behavior:
 
 ## Installation
 
-Save the script somewhere, for example:
+Choose the script that matches your `mmsg` version:
+
+- `break_reminder.sh` – new `mmsg` syntax
+- `break_reminder_old_mmsg.sh` – old `mmsg` syntax
+
+Save the chosen script somewhere convenient, for example:
 
 ```bash
 ~/.local/bin/break_reminder.sh
@@ -78,15 +93,22 @@ Make it executable:
 chmod +x ~/.local/bin/break_reminder.sh
 ```
 
-or
+If you want to keep both versions available, rename the old one:
 
-## Quick Install
+```bash
+cp break_reminder_old_mmsg.sh ~/.local/bin/break_reminder_old_mmsg.sh
+chmod +x ~/.local/bin/break_reminder_old_mmsg.sh
+```
+
+### Quick Install
 
 ```bash
 mkdir -p ~/.local/bin && \
 wget -O ~/.local/bin/break_reminder.sh https://raw.githubusercontent.com/mtriam/mbreakreminder/main/break_reminder.sh && \
 chmod +x ~/.local/bin/break_reminder.sh
 ```
+
+If you need the legacy version instead, replace the filename in the command above with `break_reminder_old_mmsg.sh`.
 
 ---
 
