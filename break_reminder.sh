@@ -36,6 +36,7 @@ while true; do
 
 
   if (( elapsed >= WORK_TIME )); then
+    interrupted=0
 
     if (( elapsed > WORK_TIME + 120 )); then
       active_since=$(date +%s)
@@ -53,7 +54,7 @@ while true; do
 
     for (( i=1; i<=FLASHES; i++ )); do
       if (( interrupted )); then
-        interrupted=0
+    
         break
       fi
       mmsg dispatch minimized
