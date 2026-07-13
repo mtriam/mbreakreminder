@@ -1,49 +1,35 @@
 #!/usr/bin/env bash
-IDLE_RESET_TIME=300
-WORK_TIME=900
-FLASHES=15
+WORK_TIME=${1:-900}
+FLASHES=${2:-15}
+PRE_FLASHES=${3:-6}
+LAST_ACTIVE_FILE="${HOME:-/home/$USER}/.cache/break_reminder"
+SLEEP_THRESHOLD=300
 
-echo $$ > /tmp/break_reminder.pid
+mkdir -p "$(dirname "$LAST_ACTIVE_FILE")"
 
-active_since=$(date +%s)
 interrupted=0
 
-
-reset_timer() {
+if [ -r "$LAST_ACTIVE_FILE" ]; then
+  active_since=$(<"$LAST_ACTIVE_FILE")
+else
   active_since=$(date +%s)
-  interrupted=1
- }
+  printf '%s\n' "$active_since" > "$LAST_ACTIVE_FILE" 2>/dev/null
+fi
 
-trap reset_timer USR1
 
-is_fullscreen() {
-  mmsg get all-clients | jq -e '.clients | any(.is_fullscreen == true)' >/dev/null 2>&1
+check_sleep_interruption() {
+  local now=$(date +%s)
+  if (( now - last_check > SLEEP_THRESHOLD )); then
+    interrupted=1
+    active_since=$now
+  fi
+  last_check=$now
 }
 
-
-swayidle -w timeout $IDLE_RESET_TIME "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" resume "kill -USR1 $(cat /tmp/break_reminder.pid 2>/dev/null)" &
-
-while true; do
-  now=$(date +%s)
-
-  if is_fullscreen; then
-    active_since=$(date +%s)
-    sleep 30
-    continue
-   fi
-
-  elapsed=$(( now - active_since ))
-
-
-  if (( elapsed >= WORK_TIME )); then
-    interrupted=0
-
-    if (( elapsed > WORK_TIME + 120 )); then
-      active_since=$(date +%s)
-      continue
-    fi
-
-    for i in {1..6}; do
+flash() {
+    check_sleep_interruption
+    for ((i=1; i<=PRE_FLASHES; i++)); do
+      check_sleep_interruption
       if (( interrupted )); then
         break
       fi
@@ -53,15 +39,35 @@ while true; do
     sleep 2s
 
     for (( i=1; i<=FLASHES; i++ )); do
+      check_sleep_interruption
       if (( interrupted )); then
-    
-        break
+          break
       fi
       mmsg dispatch minimized
       sleep 0.5
       mmsg dispatch restore_minimized
       sleep 0.5
     done
+}
+
+
+last_check=$(date +%s)
+
+while true; do
+  now=$(date +%s)
+  check_sleep_interruption
+
+  if mmsg get all-clients | jq -e '.clients | any(.is_fullscreen == true)' >/dev/null 2>&1; then
+    active_since=$(date +%s)
+    sleep 30
+    continue
+   fi
+
+  if (( now - active_since >= WORK_TIME )); then
+    interrupted=0
+
+    printf '%s\n' "$active_since" > "$LAST_ACTIVE_FILE" 2>/dev/null
+    flash
 
     active_since=$(date +%s)
   fi

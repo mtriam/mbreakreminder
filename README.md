@@ -1,6 +1,6 @@
 # Break Reminder for MangoWM
 
-A simple Bash break reminder for MangoWM using `mmsg` and `swayidle`.
+A simple Bash break reminder for MangoWM using `mmsg` and `jq`.
 
 The script tracks active work time and reminds you to take a break by repeatedly minimizing/restoring the current window after a configurable amount of uninterrupted activity.
 
@@ -22,7 +22,8 @@ Fullscreen windows are ignored automatically, making it suitable for gaming, vid
 ## Requirements
 
 - Bash
-- `swayidle`
+- `mmsg`
+- `jq`
 - MangoWM
 
 ---
@@ -40,36 +41,38 @@ Use the one that matches your MangoWM / `mmsg` installation.
 
 ## Configuration
 
-You can modify these variables at the top of the script:
+The script accepts optional command-line arguments:
 
 ```bash
-IDLE_RESET_TIME=300   # Seconds of idle time before timer resets
-WORK_TIME=900         # Seconds of continuous work before reminder
-FLASHES=15            # Number of minimize/restore flashes
+./break_reminder.sh [WORK_TIME] [FLASHES] [PRE_FLASHES]
 ```
+
+- `WORK_TIME` — seconds of continuous work before the reminder (default: `900`)
+- `FLASHES` — number of minimize/restore flashes after the warning phase (default: `15`)
+- `PRE_FLASHES` — number of maximize toggle flashes before the main reminder (default: `6`)
 
 Default behavior:
 
-- 5 minutes idle → reset timer
 - 15 minutes active work → trigger reminder
+- 15 minimize/restore flashes
+- 6 warning maximize toggles
 
 ---
 
 ## How It Works
 
-1. The script stores its PID in:
+1. The script stores the last active timestamp in:
 
 ```text
-/tmp/break_reminder.pid
+~/.cache/break_reminder
 ```
 
-2. `swayidle` watches for inactivity.
+2. It detects interruptions by checking for long sleep or inactivity gaps in its main loop.
 
-3. After enough idle time, the script receives `USR1` and resets the work timer.
+3. If any fullscreen window is active, the timer is reset and the reminder is delayed.
 
 4. If the active work timer exceeds `WORK_TIME`:
-   - fullscreen windows are skipped
-   - the current window is toggled several times
+   - the active window is maximized and restored several times as a warning phase
    - then minimized/restored repeatedly as a visual reminder
 
 ---
@@ -124,8 +127,8 @@ exec-once = ~/.local/bin/break_reminder.sh
 
 ## Notes
 
-- The reminder automatically cancels if the timer exceeds `WORK_TIME + 120`.
-- Fullscreen windows temporarily pause tracking.
+- System sleep or long interruptions reset the timer.
+- Fullscreen windows temporarily pause tracking and reset the active timer.
 - No notifications, overlays, or external GUI dependencies.
 
 ---
