@@ -22,8 +22,8 @@ Fullscreen windows are ignored automatically, making it suitable for gaming, vid
 ## Requirements
 
 - Bash
-- `mmsg`
 - `jq`
+- `swayidle`
 - MangoWM
 
 ---
@@ -44,18 +44,22 @@ Use the one that matches your MangoWM / `mmsg` installation.
 The script accepts optional command-line arguments:
 
 ```bash
-./break_reminder.sh [WORK_TIME] [FLASHES] [PRE_FLASHES]
+./break_reminder.sh [WORK_TIME] [IDLE_RESET_TIME] [FLASHES] [PRE_FLASHES] [TICK]
 ```
 
 - `WORK_TIME` — seconds of continuous work before the reminder (default: `900`)
+- `IDLE_RESET_TIME` — seconds of idle before the timer resets automatically (default: `300`)
 - `FLASHES` — number of minimize/restore flashes after the warning phase (default: `15`)
 - `PRE_FLASHES` — number of maximize toggle flashes before the main reminder (default: `6`)
+- `TICK` — sleep interval between checks (default: `30`)
 
 Default behavior:
 
 - 15 minutes active work → trigger reminder
+- 5 minutes idle resets the timer
 - 15 minimize/restore flashes
 - 6 warning maximize toggles
+- 30-second check interval
 
 ---
 
@@ -67,7 +71,7 @@ Default behavior:
 ~/.cache/break_reminder
 ```
 
-2. It detects interruptions by checking for long sleep or inactivity gaps in its main loop.
+2. It detects interruptions by checking for long sleep or inactivity gaps in its main loop, and uses `swayidle` to reset the timer after idle.
 
 3. If any fullscreen window is active, the timer is reset and the reminder is delayed.
 
