@@ -41,23 +41,37 @@ Use the one that matches your MangoWM / `mmsg` installation.
 
 ## Configuration
 
-The script accepts optional command-line arguments:
+The script accepts optional command-line arguments using long flags, with short aliases available as well:
 
 ```bash
-./break_reminder.sh [WORK_TIME] [IDLE_RESET_TIME] [FLASHES] [PRE_FLASHES] [TICK]
+./break_reminder.sh \
+  --work-time 900 \
+  --idle-reset-time 300 \
+  --break 15 \
+  --pre-flashes 6 \
+  --tick 30 \
+  --mode MONITOR
 ```
 
-- `WORK_TIME` — seconds of continuous work before the reminder (default: `900`)
-- `IDLE_RESET_TIME` — seconds of idle before the timer resets automatically (default: `300`)
-- `FLASHES` — number of minimize/restore flashes after the warning phase (default: `15`)
-- `PRE_FLASHES` — number of maximize toggle flashes before the main reminder (default: `6`)
-- `TICK` — sleep interval between checks (default: `30`)
+Short aliases:
+
+```bash
+./break_reminder.sh -w 900 -i 300 -b 15 -p 6 -t 30 -m MONITOR
+```
+
+- `-w`, `--work-time` — seconds of continuous work before the reminder (default: `900`)
+- `-i`, `--idle-reset-time` — seconds of idle before the timer resets automatically (default: `300`)
+- `-b`, `--break` — break duration: number of flash cycles in `TAG` mode, or seconds of monitor sleep in `MONITOR` mode (default: `15`)
+- `-p`, `--pre-flashes` — number of maximize toggle flashes before the main reminder (default: `6`)
+- `-t`, `--tick` — sleep interval between checks (default: `30`)
+- `-m`, `--mode` — `TAG` or `MONITOR` (default: `MONITOR`)
+- `-h`, `--help` — show usage
 
 Default behavior:
 
 - 15 minutes active work → trigger reminder
 - 5 minutes idle resets the timer
-- 15 minimize/restore flashes
+- 15 seconds monitor sleep in `MONITOR` mode, or 15 tag flash cycles in `TAG` mode
 - 6 warning maximize toggles
 - 30-second check interval
 
@@ -77,7 +91,9 @@ Default behavior:
 
 4. If the active work timer exceeds `WORK_TIME`:
    - the active window is maximized and restored several times as a warning phase
-   - then minimized/restored repeatedly as a visual reminder
+   - then the reminder runs in the selected mode:
+     - `TAG`: minimize/restore the active tag repeatedly
+     - `MONITOR`: sleep and wake the monitors for the configured break duration
 
 ---
 

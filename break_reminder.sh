@@ -1,13 +1,87 @@
 #!/usr/bin/env bash
-WORK_TIME=${1:-900}
-IDLE_RESET_TIME=${2:-300}
-FLASHES=${3:-15}
-PRE_FLASHES=${4:-6}
-TICK=${5:-30}
+WORK_TIME=900
+IDLE_RESET_TIME=300
+BREAK=15
+PRE_FLASHES=6
+TICK=30
+MODE="MONITOR"
 LAST_ACTIVE_FILE="${HOME:-/home/$USER}/.cache/break_reminder"
 PID_FILE="/tmp/break_reminder.pid"
 SWAYIDLE_PID_FILE="/tmp/break_reminder_swayidle.pid"
 SLEEP_THRESHOLD=300
+
+usage() {
+  cat <<'EOF'
+Usage: ./break_reminder.sh [options]
+
+Options:
+  -w, --work-time SECONDS
+  -i, --idle-reset-time SECONDS
+  -b, --break SECONDS
+  -p, --pre-flashes N
+  -t, --tick SECONDS
+  -m, --mode TAG|MONITOR
+  -h, --help
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -w|--work-time)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        WORK_TIME="$2"
+        shift 2
+        ;;
+      -i|--idle-reset-time)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        IDLE_RESET_TIME="$2"
+        shift 2
+        ;;
+      -b|--break)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        BREAK="$2"
+        shift 2
+        ;;
+      -p|--pre-flashes)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        PRE_FLASHES="$2"
+        shift 2
+        ;;
+      -t|--tick)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        TICK="$2"
+        shift 2
+        ;;
+      -m|--mode)
+        [[ $# -lt 2 ]] && { echo "Missing value for $1" >&2; usage >&2; exit 1; }
+        MODE="${2^^}"
+        shift 2
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        usage >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  case "$MODE" in
+    TAG|MONITOR)
+      ;;
+    *)
+      echo "Unsupported mode: $MODE" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+parse_args "$@"
 
 mkdir -p "$(dirname "$LAST_ACTIVE_FILE")"
 echo $$ > "$PID_FILE"
@@ -50,19 +124,60 @@ flash() {
       if (( interrupted )); then
         return
       fi
-      mmsg dispatch togglemaximizescreen; sleep 0.5
+      mmsg dispatch togglemaximizescreen >/dev/null; sleep 0.5
     done
 
     sleep 2s
 
-    for (( i=1; i<=FLASHES; i++ )); do
+    if [[ "${MODE^^}" == "MONITOR" ]]; then
+      local monitors=()
+      mapfile -t monitors < <(mmsg get all-monitors | jq -r '.monitors[].name' 2>/dev/null)
+      if (( ${#monitors[@]} == 0 )); then
+        MODE="TAG"
+      else
+        for m in "${monitors[@]}"; do
+          mmsg dispatch sleep_monitor,"$m" >/dev/null
+        done
+
+        sleep "${BREAK}s"
+
+        for m in "${monitors[@]}"; do
+          mmsg dispatch wakeup_monitor,"$m" >/dev/null
+        done
+        return
+      fi
+    fi
+
+    local CURRENT_TAG
+    local OTHER_TAG
+
+    CURRENT_TAG=$(mmsg get all-tags | jq -r '.all_tags[].tags[] | select(.is_active) | .index' | head -n1)
+    if [[ ! "$CURRENT_TAG" =~ ^[1-9]$ ]]; then
+      CURRENT_TAG=1
+    fi
+
+    local TAG_TOTAL
+    TAG_TOTAL=$(mmsg get monitor "$(mmsg get cursorpos | jq -r '.monitor')" | jq '.tag_num')
+    if ! [[ "$TAG_TOTAL" =~ ^[1-9][0-9]*$ ]]; then
+      TAG_TOTAL=2
+    fi
+
+    while true; do
+      OTHER_TAG=$((RANDOM % TAG_TOTAL + 1))
+      if (( OTHER_TAG != CURRENT_TAG )); then
+        break
+      fi
+    done
+
+    for (( i=1; i<=BREAK; i++ )); do
       check_sleep_interruption
       if (( interrupted )); then
+            mmsg dispatch, view, "$CURRENT_TAG" >/dev/null
           return
       fi
-      mmsg dispatch minimized
+      mmsg dispatch, view, "$OTHER_TAG" >/dev/null
       sleep 0.5
-      mmsg dispatch restore_minimized
+      mmsg dispatch, view, "$CURRENT_TAG" >/dev/null
       sleep 0.5
     done
 }
@@ -73,7 +188,6 @@ if ! [ -r "$LAST_ACTIVE_FILE" ]; then
   update_last_active_file
 fi
 interrupted=0
-
 
 while true; do
   if ! [ -r "$LAST_ACTIVE_FILE" ]; then
